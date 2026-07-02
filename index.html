@@ -3,7 +3,23 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>📺 Minha Temporada de Animes</title>
+    
+    <!-- ===== CONFIGURAÇÕES PWA ===== -->
+    <title>📺 Organizador de Animes</title>
+    
+    <!-- Ícones personalizados -->
+    <link rel="icon" type="image/png" sizes="192x192" href="https://raw.githubusercontent.com/wevertonotrevew/LISTA-TEMPORADA-DE-ANIMES/main/icone.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://raw.githubusercontent.com/wevertonotrevew/LISTA-TEMPORADA-DE-ANIMES/main/icone.png">
+    
+    <!-- Configuração PWA -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Animes">
+    <meta name="application-name" content="Animes">
+    <meta name="theme-color" content="#0d0d0d">
+    <meta name="msapplication-navbutton-color" content="#0d0d0d">
+    
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js">
     </script>
     
@@ -15,6 +31,40 @@
                 "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
             }
         }
+    </script>
+
+    <!-- ===== MANIFEST PWA ===== -->
+    <script>
+        (function() {
+            const manifest = {
+                "name": "Organizador de Animes",
+                "short_name": "Animes",
+                "description": "Organizador de temporadas de animes",
+                "start_url": "/organizador-animes/",
+                "display": "standalone",
+                "background_color": "#0d0d0d",
+                "theme_color": "#0d0d0d",
+                "icons": [
+                    {
+                        "src": "https://raw.githubusercontent.com/wevertonotrevew/LISTA-TEMPORADA-DE-ANIMES/main/icone.png",
+                        "sizes": "192x192",
+                        "type": "image/png",
+                        "purpose": "any maskable"
+                    },
+                    {
+                        "src": "https://raw.githubusercontent.com/wevertonotrevew/LISTA-TEMPORADA-DE-ANIMES/main/icone.png",
+                        "sizes": "512x512",
+                        "type": "image/png",
+                        "purpose": "any maskable"
+                    }
+                ]
+            };
+
+            const link = document.createElement('link');
+            link.rel = 'manifest';
+            link.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifest));
+            document.head.appendChild(link);
+        })();
     </script>
 
     <style>
@@ -886,6 +936,9 @@
     </div>
 
     <script type="module">
+        // ============================================================
+        // FIREBASE CONFIGURAÇÃO
+        // ============================================================
         import { initializeApp } from "firebase/app";
         import { 
             getFirestore, 
@@ -919,6 +972,9 @@
     </script>
 
     <script>
+        // ============================================================
+        // CONFIGURAÇÕES
+        // ============================================================
         const STREAMING_CONFIG = {
             'Crunchyroll': {
                 logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Crunchyroll.svg/1280px-Crunchyroll.svg.png',
@@ -1039,6 +1095,10 @@
             localStorage.setItem(`animes_temporada_${user}`, JSON.stringify(dados[user]));
         }
 
+        function salvarTodosDados() {
+            usuarios.forEach(user => salvarDados(user));
+        }
+
         function renderizarTudo() {
             renderizarLista('chuauzyn');
             renderizarCronograma('chuauzyn');
@@ -1047,7 +1107,24 @@
         }
 
         // ============================================================
-        // SINCRONIZAR COM FIREBASE
+        // FUNÇÃO PARA VALIDAR URL DE IMAGEM
+        // ============================================================
+        function validarImagem(url) {
+            if (!url || url === 'https://via.placeholder.com/70x100/222/666?text=Sem+Imagem') {
+                return 'https://via.placeholder.com/70x100/222/666?text=Sem+Imagem';
+            }
+            if (url.includes('anilist.co')) {
+                url = url.replace('http://', 'https://');
+                if (url.includes('?')) {
+                    url = url.split('?')[0];
+                }
+                return url;
+            }
+            return url;
+        }
+
+        // ============================================================
+        // FIREBASE - SINCRONIZAÇÃO
         // ============================================================
         async function sincronizarFirebase() {
             if (isSyncing) return;
@@ -1071,16 +1148,21 @@
                     if (docSnap.exists()) {
                         const firebaseData = docSnap.data();
                         if (firebaseData.animes && Array.isArray(firebaseData.animes)) {
-                            // Atualiza dados locais com os do Firebase (prioridade do Firebase)
-                            dados[user] = firebaseData.animes;
+                            dados[user] = firebaseData.animes.map(anime => ({
+                                ...anime,
+                                imagem: validarImagem(anime.imagem)
+                            }));
                             salvarDados(user);
                             console.log(`📥 Dados de ${user} carregados do Firebase: ${dados[user].length} animes`);
                         }
                     } else {
-                        // Se não existir, cria com os dados locais
+                        const dadosValidados = dados[user].map(anime => ({
+                            ...anime,
+                            imagem: validarImagem(anime.imagem)
+                        }));
                         await setDoc(docRef, {
                             usuario: user,
-                            animes: dados[user],
+                            animes: dadosValidados,
                             ultimaAtualizacao: new Date().toISOString()
                         });
                         console.log(`📤 Dados de ${user} enviados para o Firebase`);
@@ -1106,7 +1188,60 @@
         }
 
         // ============================================================
-        // ENVIAR PARA FIREBASE (quando mudar algo)
+        // FIREBASE - LISTENER EM TEMPO REAL
+        // ============================================================
+        function setupFirebaseListener() {
+            try {
+                const { db, doc, onSnapshot } = window;
+                if (!db) return;
+
+                usuarios.forEach(user => {
+                    const docRef = doc(db, 'animes', user);
+                    onSnapshot(docRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            const firebaseData = docSnap.data();
+                            if (firebaseData.animes && Array.isArray(firebaseData.animes)) {
+                                const dadosValidados = firebaseData.animes.map(anime => ({
+                                    ...anime,
+                                    imagem: validarImagem(anime.imagem)
+                                }));
+                                
+                                const localData = JSON.stringify(dados[user]);
+                                const remoteData = JSON.stringify(dadosValidados);
+                                
+                                if (localData !== remoteData && !isUpdatingFromFirebase) {
+                                    isUpdatingFromFirebase = true;
+                                    dados[user] = dadosValidados;
+                                    salvarDados(user);
+                                    renderizarLista(user);
+                                    renderizarCronograma(user);
+                                    
+                                    const now = new Date().toLocaleString('pt-BR');
+                                    lastSyncTime = now;
+                                    localStorage.setItem('lastSyncTime', now);
+                                    updateSyncStatus('online', `Última sincronização: ${now}`);
+                                    
+                                    if (!document.hidden) {
+                                        showToast(`🔄 ${user} atualizado da nuvem!`, 'info');
+                                    }
+                                    setTimeout(() => { isUpdatingFromFirebase = false; }, 500);
+                                }
+                            }
+                        }
+                    }, (error) => {
+                        console.warn('⚠️ Erro no listener do Firebase:', error);
+                        updateSyncStatus('offline');
+                    });
+                });
+
+                console.log('👢 Listeners do Firebase configurados');
+            } catch (error) {
+                console.warn('⚠️ Erro ao configurar listeners:', error);
+            }
+        }
+
+        // ============================================================
+        // ENVIAR PARA FIREBASE
         // ============================================================
         async function enviarParaFirebase(user) {
             if (isUpdatingFromFirebase) return;
@@ -1129,55 +1264,7 @@
         }
 
         // ============================================================
-        // LISTENER DO FIREBASE
-        // ============================================================
-        function setupFirebaseListener() {
-            try {
-                const { db, doc, onSnapshot } = window;
-                if (!db) return;
-
-                usuarios.forEach(user => {
-                    const docRef = doc(db, 'animes', user);
-                    onSnapshot(docRef, (docSnap) => {
-                        if (docSnap.exists()) {
-                            const firebaseData = docSnap.data();
-                            if (firebaseData.animes && Array.isArray(firebaseData.animes)) {
-                                const localData = JSON.stringify(dados[user]);
-                                const remoteData = JSON.stringify(firebaseData.animes);
-                                
-                                if (localData !== remoteData && !isUpdatingFromFirebase) {
-                                    isUpdatingFromFirebase = true;
-                                    dados[user] = firebaseData.animes;
-                                    salvarDados(user);
-                                    renderizarLista(user);
-                                    renderizarCronograma(user);
-                                    
-                                    const now = new Date().toLocaleString('pt-BR');
-                                    lastSyncTime = now;
-                                    localStorage.setItem('lastSyncTime', now);
-                                    updateSyncStatus('online', `Última sincronização: ${now}`);
-                                    
-                                    if (!document.hidden) {
-                                        showToast(`🔄 ${user} atualizado da nuvem!`, 'info');
-                                    }
-                                    setTimeout(() => { isUpdatingFromFirebase = false; }, 500);
-                                }
-                            }
-                        }
-                    }, (error) => {
-                        console.warn('⚠️ Erro no listener:', error);
-                        updateSyncStatus('offline');
-                    });
-                });
-
-                console.log('👢 Listeners configurados');
-            } catch (error) {
-                console.warn('⚠️ Erro ao configurar listeners:', error);
-            }
-        }
-
-        // ============================================================
-        // EXPORTAR/IMPORTAR
+        // EXPORTAR DADOS
         // ============================================================
         function exportarDados() {
             const data = {
@@ -1193,9 +1280,13 @@
             link.href = url;
             link.click();
             URL.revokeObjectURL(url);
-            showToast('✅ Dados exportados!', 'success');
+
+            showToast('✅ Dados exportados com sucesso!', 'success');
         }
 
+        // ============================================================
+        // IMPORTAR DADOS
+        // ============================================================
         function importarDados(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1204,35 +1295,46 @@
             reader.onload = function(e) {
                 try {
                     const data = JSON.parse(e.target.result);
+
                     if (!data.usuarios || !data.usuarios.chuauzyn || !data.usuarios.aika) {
-                        showToast('❌ Arquivo inválido!', 'error');
+                        showToast('❌ Arquivo inválido! Formato não reconhecido.', 'error');
                         return;
                     }
 
-                    if (!confirm('⚠️ Isso vai SOBRESCREVER todos os dados. Continuar?')) return;
+                    if (!confirm('⚠️ Isso vai SOBRESCREVER todos os dados atuais de ambas as usuárias. Continuar?')) {
+                        return;
+                    }
 
-                    dados.chuauzyn = data.usuarios.chuauzyn;
-                    dados.aika = data.usuarios.aika;
+                    dados.chuauzyn = data.usuarios.chuauzyn.map(anime => ({
+                        ...anime,
+                        imagem: validarImagem(anime.imagem)
+                    }));
+                    dados.aika = data.usuarios.aika.map(anime => ({
+                        ...anime,
+                        imagem: validarImagem(anime.imagem)
+                    }));
 
-                    salvarDados('chuauzyn');
-                    salvarDados('aika');
+                    salvarTodosDados();
                     renderizarTudo();
-                    
-                    // Envia para Firebase
-                    enviarParaFirebase('chuauzyn');
-                    enviarParaFirebase('aika');
-                    
-                    showToast('✅ Dados importados!', 'success');
+
+                    setTimeout(() => {
+                        enviarParaFirebase('chuauzyn');
+                        enviarParaFirebase('aika');
+                    }, 500);
+
+                    showToast('✅ Dados importados com sucesso!', 'success');
                 } catch (error) {
-                    showToast('❌ Erro: ' + error.message, 'error');
+                    showToast('❌ Erro ao ler o arquivo: ' + error.message, 'error');
+                    console.error(error);
                 }
             };
+
             reader.readAsText(file);
             event.target.value = '';
         }
 
         // ============================================================
-        // NAVEGAÇÃO
+        // NAVEGAÇÃO ENTRE USUÁRIOS
         // ============================================================
         function mudarUsuario(user) {
             usuarioAtual = user;
@@ -1243,6 +1345,9 @@
             fecharFormulario(user);
         }
 
+        // ============================================================
+        // NAVEGAÇÃO ENTRE ABAS INTERNAS
+        // ============================================================
         function mudarAba(abaId) {
             const parent = document.getElementById(abaId).closest('.main-content');
             const parentId = parent.id.replace('main-', '');
@@ -1305,11 +1410,13 @@
 
                     const img = document.createElement('img');
                     img.className = 'anime-cover';
-                    img.src = anime.imagem || 'https://via.placeholder.com/70x100/222/666?text=Sem+Imagem';
+                    const imagemUrl = validarImagem(anime.imagem);
+                    img.src = imagemUrl;
                     img.alt = anime.nome;
                     img.loading = 'lazy';
                     img.onerror = function() {
-                        this.src = 'https://via.placeholder.com/70x100/222/666?text=Erro';
+                        this.src = 'https://via.placeholder.com/70x100/222/666?text=Erro+Img';
+                        this.onerror = null;
                     };
 
                     const info = document.createElement('div');
@@ -1345,7 +1452,7 @@
                     const editBtn = document.createElement('button');
                     editBtn.className = 'edit-btn';
                     editBtn.textContent = '✎';
-                    editBtn.title = 'Editar';
+                    editBtn.title = 'Editar anime';
                     const index = animes.indexOf(anime);
                     editBtn.onclick = function(e) {
                         e.stopPropagation();
@@ -1355,7 +1462,7 @@
                     const removeBtn = document.createElement('button');
                     removeBtn.className = 'remove-btn';
                     removeBtn.textContent = '✕';
-                    removeBtn.title = 'Remover';
+                    removeBtn.title = 'Remover anime';
                     removeBtn.onclick = function(e) {
                         e.stopPropagation();
                         removerAnime(user, index);
@@ -1421,17 +1528,26 @@
 
                     const banner = document.createElement('img');
                     banner.className = 'cron-banner';
-                    if (anime.imagem && !anime.imagem.includes('placeholder')) {
-                        banner.src = anime.imagem;
+                    const imagemUrl = validarImagem(anime.imagem);
+                    
+                    if (imagemUrl && !imagemUrl.includes('placeholder') && !imagemUrl.includes('Erro')) {
+                        banner.src = imagemUrl;
                         banner.loading = 'lazy';
                         banner.onerror = function() {
-                            this.style.display = 'none';
+                            const cores = ['#6c5ce7', '#e17055', '#00b894', '#fdcb6e', '#0984e3', '#fd79a8'];
+                            const cor = cores[anime.nome.length % cores.length];
+                            this.style.background = `linear-gradient(135deg, ${cor}, ${cor}dd)`;
+                            this.style.opacity = '0.5';
+                            this.style.objectFit = 'none';
+                            this.src = '';
+                            this.onerror = null;
                         };
                     } else {
                         const cores = ['#6c5ce7', '#e17055', '#00b894', '#fdcb6e', '#0984e3', '#fd79a8'];
                         const cor = cores[anime.nome.length % cores.length];
                         banner.style.background = `linear-gradient(135deg, ${cor}, ${cor}dd)`;
                         banner.style.opacity = '0.5';
+                        banner.alt = '';
                     }
 
                     const overlay = document.createElement('div');
@@ -1582,6 +1698,8 @@
                 return;
             }
 
+            imagem = validarImagem(imagem);
+
             const anime = { nome, data, streaming, dia, imagem };
 
             if (editIndex >= 0 && editIndex < dados[user].length) {
@@ -1597,7 +1715,6 @@
             renderizarCronograma(user);
             fecharFormulario(user);
             
-            // Envia para Firebase
             await enviarParaFirebase(user);
         }
 
@@ -1621,12 +1738,13 @@
         }
 
         function novaTemporada() {
-            if (confirm(`⚠️ Isso vai APAGAR todos os animes de ${usuarioAtual}. Confirmar?`)) {
+            if (confirm(`⚠️ Isso vai APAGAR todos os animes de ${usuarioAtual} e começar do zero. Confirmar?`)) {
                 dados[usuarioAtual] = [];
                 salvarDados(usuarioAtual);
                 renderizarLista(usuarioAtual);
                 renderizarCronograma(usuarioAtual);
                 showToast('🔄 Nova temporada iniciada!', 'info');
+                
                 enviarParaFirebase(usuarioAtual);
             }
         }
@@ -1655,9 +1773,10 @@
                 link.download = `${nomeArquivo}.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
-                showToast('✅ Imagem gerada!', 'success');
+                showToast('✅ Imagem gerada com sucesso!', 'success');
             }).catch(err => {
-                showToast('❌ Erro: ' + err.message, 'error');
+                showToast('❌ Erro ao gerar imagem: ' + err.message, 'error');
+                console.error(err);
             });
         }
 
@@ -1667,14 +1786,14 @@
         window.addEventListener('online', () => {
             isOnline = true;
             updateSyncStatus('online');
-            showToast('🌐 Conectado!', 'success');
+            showToast('🌐 Conectado à internet!', 'success');
             setTimeout(() => sincronizarFirebase(), 1000);
         });
 
         window.addEventListener('offline', () => {
             isOnline = false;
             updateSyncStatus('offline');
-            showToast('📡 Offline', 'info');
+            showToast('📡 Offline - alterações serão sincronizadas quando voltar', 'info');
         });
 
         // ============================================================
@@ -1684,10 +1803,10 @@
 
         setTimeout(() => {
             setupFirebaseListener();
-            setTimeout(() => sincronizarFirebase(), 1500);
+            setTimeout(() => sincronizarFirebase(), 2000);
         }, 500);
 
-        // Event listeners
+        // Event listeners para Enter
         usuarios.forEach(user => {
             const input = document.getElementById(`inputNome-${user}`);
             if (input) {
@@ -1704,14 +1823,15 @@
             }
         });
 
-        // Fechar formulário
+        // Fechar formulário ao clicar fora
         document.addEventListener('click', function(e) {
             usuarios.forEach(user => {
                 const form = document.getElementById(`form-${user}`);
                 if (form && form.classList.contains('open')) {
                     const isForm = form.contains(e.target);
                     const isAddBtn = e.target.closest('.btn-primary');
-                    if (!isForm && !isAddBtn) {
+                    const isInsideMain = form.closest('.main-content').contains(e.target);
+                    if (!isForm && !isAddBtn && !isInsideMain) {
                         fecharFormulario(user);
                     }
                 }
@@ -1719,7 +1839,7 @@
         });
 
         // ============================================================
-        // EXPORTA FUNÇÕES
+        // EXPORTA FUNÇÕES PARA O ESCOPO GLOBAL
         // ============================================================
         window.mudarUsuario = mudarUsuario;
         window.mudarAba = mudarAba;
