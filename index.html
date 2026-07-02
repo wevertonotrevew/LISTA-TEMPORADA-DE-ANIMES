@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>📺 Minha Temporada de Animes</title>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js">
+    </script>
+    
+    <!-- Firebase SDK -->
+    <script type="importmap">
+        {
+            "imports": {
+                "firebase/app": "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js",
+                "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
+            }
+        }
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0d0d0d;
+            color: #e0e0e0;
+            padding: 20px;
+            max-width: 950px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #2a2a2a;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            background: linear-gradient(135deg, #ff6b6b, #ffd93d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: transform 0.2s, filter 0.2s;
+        }
+        .btn:hover {
+            transform: scale(1.03);
+            filter: brightness(1.1);
+        }
+        .btn-primary {
+            background: #6c5ce7;
+            color: #fff;
+        }
+        .btn-success {
+            background: #00b894;
+            color: #fff;
+        }
+        .btn-danger {
+            background: #e17055;
+            color: #fff;
+        }
+        .btn-warning {
+            background: #fdcb6e;
+            color: #2d3436;
+        }
+        .btn-secondary {
+            background: #2d3436;
+            color: #dfe6e9;
+        }
+        .btn-info {
+            background: #0984e3;
+            color: #fff;
+        }
+        .btn-pink {
+            background: #fd79a8;
+            color: #fff;
+        }
+        .btn-export {
+            background: #00b894;
+            color: #fff;
+        }
+        .btn-import {
+            background: #0984e3;
+            color: #fff;
+        }
+        .btn-sync {
+            background: #6c5ce7;
+            color: #fff;
+            position: relative;
+        }
+        .btn-sync.syncing {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .btn-sync .sync-spinner {
+            display: none;
+        }
+        .btn-sync.syncing .sync-spinner {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .main-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #2a2a2a;
+            padding-bottom: 4px;
+            flex-wrap: wrap;
+        }
+        .main-tab-btn {
+            padding: 12px 32px;
+            border: none;
+            background: transparent;
+            color: #888;
+            font-size: 17px;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            transition: 0.3s;
+            position: relative;
+        }
+        .main-tab-btn:hover {
+            color: #fff;
+            background: #1a1a1a;
+        }
+        .main-tab-btn.active {
+            color: #fdcb6e;
+            background: #1a1a1a;
+        }
+        .main-tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #fdcb6e;
+            border-radius: 4px;
+        }
+        .main-tab-btn.chuauzyn {
+            color: #6c5ce7;
+        }
+        .main-tab-btn.chuauzyn.active {
+            color: #6c5ce7;
+        }
+        .main-tab-btn.chuauzyn.active::after {
+            background: #6c5ce7;
+        }
+        .main-tab-btn.aika {
+            color: #fd79a8;
+        }
+        .main-tab-btn.aika.active {
+            color: #fd79a8;
+        }
+        .main-tab-btn.aika.active::after {
+            background: #fd79a8;
+        }
+
+        .main-content {
+            display: none;
+        }
+        .main-content.active {
+            display: block;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #2a2a2a;
+            padding-bottom: 4px;
+        }
+        .tab-btn {
+            padding: 10px 24px;
+            border: none;
+            background: transparent;
+            color: #888;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            transition: 0.3s;
+            position: relative;
+        }
+        .tab-btn:hover {
+            color: #fff;
+            background: #1a1a1a;
+        }
+        .tab-btn.active {
+            color: #fdcb6e;
+            background: #1a1a1a;
+        }
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #fdcb6e;
+            border-radius: 4px;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        .sync-status {
+            text-align: center;
+            font-size: 12px;
+            color: #555;
+            padding: 6px 12px;
+            margin-bottom: 16px;
+            background: #141414;
+            border-radius: 8px;
+            border: 1px solid #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .sync-status .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .sync-status .status-dot.online {
+            background: #00b894;
+        }
+        .sync-status .status-dot.offline {
+            background: #e17055;
+        }
+        .sync-status .status-dot.syncing {
+            background: #fdcb6e;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .form {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            display: none;
+            flex-wrap: wrap;
+            gap: 12px;
+            border: 1px solid #2a2a2a;
+        }
+        .form.open {
+            display: flex;
+        }
+        .form input,
+        .form select {
+            flex: 1 1 180px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #0d0d0d;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+        .form input:focus,
+        .form select:focus {
+            outline: 1px solid #6c5ce7;
+            border-color: #6c5ce7;
+        }
+        .form .btn {
+            flex: 0 0 auto;
+        }
+
+        .form-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1 1 100%;
+            flex-wrap: wrap;
+        }
+        .form-row .preview-img {
+            width: 60px;
+            height: 85px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #0d0d0d;
+        }
+        .form-row input[type="file"] {
+            flex: 0 0 auto;
+            padding: 6px 10px;
+            background: #2d3436;
+            border-radius: 8px;
+            border: 1px solid #333;
+            color: #e0e0e0;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .form-row input[type="file"]::file-selector-button {
+            background: #6c5ce7;
+            color: #fff;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .day-section {
+            margin-bottom: 30px;
+            background: #141414;
+            border-radius: 16px;
+            padding: 16px;
+            border-left: 4px solid #6c5ce7;
+        }
+
+        .day-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fdcb6e;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .day-title .count {
+            font-size: 14px;
+            font-weight: 400;
+            color: #888;
+            background: #222;
+            padding: 0 12px;
+            border-radius: 20px;
+        }
+
+        .anime-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .anime-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: #1e1e1e;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid #2a2a2a;
+            transition: 0.2s;
+            position: relative;
+        }
+        .anime-card:hover {
+            border-color: #6c5ce7;
+            background: #252525;
+        }
+
+        .anime-card img.anime-cover {
+            width: 70px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            background: #222;
+            flex-shrink: 0;
+            border: 1px solid #333;
+        }
+
+        .anime-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .anime-info .name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        .anime-info .details {
+            font-size: 13px;
+            color: #aaa;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+        .anime-info .details span {
+            padding: 0 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            line-height: 24px;
+            background: #2a2a2a;
+        }
+
+        .streaming-logo {
+            height: 20px;
+            width: auto;
+            vertical-align: middle;
+            border-radius: 4px;
+            background: transparent;
+        }
+        .streaming-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 10px 2px 6px;
+            border-radius: 12px;
+            font-size: 12px;
+            line-height: 22px;
+            font-weight: 500;
+        }
+        .streaming-badge img {
+            height: 16px;
+            width: auto;
+        }
+
+        .streaming-crunchyroll {
+            background: #f47521;
+            color: #fff;
+        }
+        .streaming-primevideo {
+            background: #00a8e1;
+            color: #fff;
+        }
+        .streaming-disney {
+            background: #113ccf;
+            color: #fff;
+        }
+        .streaming-netflix {
+            background: #e50914;
+            color: #fff;
+        }
+        .streaming-outro {
+            background: #6c5ce7;
+            color: #fff;
+        }
+        .streaming-desconhecido {
+            background: #2d3436;
+            color: #888;
+        }
+
+        .anime-card .card-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .anime-card .card-actions button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: 0.2s;
+            font-size: 16px;
+        }
+        .anime-card .card-actions .edit-btn {
+            color: #fdcb6e;
+        }
+        .anime-card .card-actions .edit-btn:hover {
+            background: #fdcb6e22;
+            transform: scale(1.2);
+        }
+        .anime-card .card-actions .remove-btn {
+            color: #e17055;
+        }
+        .anime-card .card-actions .remove-btn:hover {
+            background: #e1705522;
+            transform: scale(1.2);
+        }
+
+        .cronograma-card {
+            position: relative;
+            overflow: hidden;
+            border-radius: 14px;
+            padding: 16px 20px;
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            transition: 0.3s ease;
+            cursor: default;
+        }
+
+        .cronograma-card:hover {
+            transform: scale(1.01);
+            border-color: #6c5ce7;
+            box-shadow: 0 4px 20px rgba(108, 92, 231, 0.2);
+        }
+
+        .cronograma-card .cron-banner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.25;
+            transition: 0.4s ease;
+            z-index: 0;
+        }
+
+        .cronograma-card:hover .cron-banner {
+            opacity: 0.4;
+            transform: scale(1.03);
+        }
+
+        .cronograma-card .cron-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(13, 13, 13, 0.85) 0%, rgba(13, 13, 13, 0.6) 100%);
+            z-index: 1;
+        }
+
+        .cronograma-card .cron-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .cronograma-card .cron-nome {
+            font-size: 17px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+            letter-spacing: 0.3px;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .cronograma-card .cron-streaming {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(6px);
+            padding: 4px 14px 4px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            flex-shrink: 0;
+        }
+
+        .cronograma-card .cron-streaming img {
+            height: 20px;
+            width: auto;
+            filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.5));
+        }
+
+        .cronograma-card .cron-streaming span {
+            font-size: 12px;
+            font-weight: 500;
+            color: #ddd;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+        }
+
+        .day-section.cronograma-destaque {
+            border-left: 4px solid #fdcb6e;
+            background: #111;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .day-section.cronograma-destaque .day-title {
+            font-size: 22px;
+            color: #fdcb6e;
+            border-bottom: 1px solid #2a2a2a;
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+        }
+
+        .footer-credit {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 16px;
+            border-top: 1px solid #2a2a2a;
+            color: #666;
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+        .footer-credit strong {
+            color: #fdcb6e;
+        }
+
+        #importFileInput {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            .anime-card {
+                flex-wrap: wrap;
+                padding: 12px;
+            }
+            .anime-card img.anime-cover {
+                width: 60px;
+                height: 85px;
+            }
+            .header h1 {
+                font-size: 18px;
+            }
+            .btn {
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+            .day-title {
+                font-size: 17px;
+            }
+            .anime-card .card-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+            .form-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .form-row .preview-img {
+                align-self: center;
+            }
+            .tab-btn {
+                padding: 8px 14px;
+                font-size: 13px;
+            }
+            .main-tab-btn {
+                padding: 10px 20px;
+                font-size: 15px;
+            }
+            .cronograma-card {
+                flex-wrap: wrap;
+                padding: 14px 16px;
+                min-height: 60px;
+            }
+            .cronograma-card .cron-nome {
+                font-size: 15px;
+                min-width: 100px;
+            }
+            .header-actions {
+                justify-content: center;
+            }
+            .sync-status {
+                font-size: 11px;
+                padding: 4px 10px;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #141414;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #6c5ce7;
+            border-radius: 8px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            color: #fff;
+            padding: 16px 32px;
+            border-radius: 12px;
+            border: 1px solid #2a2a2a;
+            font-weight: 600;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            text-align: center;
+            max-width: 90%;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+        .toast.success {
+            border-color: #00b894;
+        }
+        .toast.error {
+            border-color: #e17055;
+        }
+        .toast.info {
+            border-color: #0984e3;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast" class="toast"></div>
+
+    <div class="header">
+        <h1>📺 Minha Temporada</h1>
+        <div class="header-actions">
+            <button class="btn btn-primary" onclick="abrirFormulario()">➕ Adicionar</button>
+            <button class="btn btn-warning" onclick="novaTemporada()">🔄 Nova Temporada</button>
+            <button class="btn btn-sync" id="syncBtn" onclick="sincronizarFirebase()">
+                <span class="sync-spinner">⟳</span> ☁️ Sincronizar
+            </button>
+            <button class="btn btn-export" onclick="exportarDados()">💾 Exportar</button>
+            <button class="btn btn-import" onclick="document.getElementById('importFileInput').click()">📂 Importar</button>
+            <input type="file" id="importFileInput" accept=".json" onchange="importarDados(event)" />
+        </div>
+    </div>
+
+    <div class="sync-status" id="syncStatus">
+        <span>
+            <span class="status-dot offline" id="statusDot"></span>
+            <span id="statusText">Desconectado</span>
+        </span>
+        <span id="lastSyncText">Última sincronização: nunca</span>
+    </div>
+
+    <div class="main-tabs">
+        <button class="main-tab-btn chuauzyn active" data-user="chuauzyn" onclick="mudarUsuario('chuauzyn')">💜 Chuauzyn</button>
+        <button class="main-tab-btn aika" data-user="aika" onclick="mudarUsuario('aika')">🌸 Aika</button>
+    </div>
+
+    <!-- CHUAUZYN -->
+    <div id="main-chuauzyn" class="main-content active">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="tab-lista-chuauzyn" onclick="mudarAba('tab-lista-chuauzyn')">📋 Minha Lista</button>
+            <button class="tab-btn" data-tab="tab-cronograma-chuauzyn" onclick="mudarAba('tab-cronograma-chuauzyn')">📅 Cronograma</button>
+        </div>
+
+        <div class="form" id="form-chuauzyn">
+            <input type="text" id="inputNome-chuauzyn" placeholder="Nome do anime *" />
+            <input type="date" id="inputData-chuauzyn" onchange="atualizarDiaPelaData('chuauzyn')" />
+            <select id="inputStreaming-chuauzyn">
+                <option value="Crunchyroll">🍊 Crunchyroll</option>
+                <option value="Prime Video">📦 Prime Video</option>
+                <option value="Disney+">🏰 Disney+</option>
+                <option value="Netflix">🎬 Netflix</option>
+                <option value="Outro">🔮 Outro</option>
+                <option value="Desconhecido">❓ Desconhecido</option>
+            </select>
+            <select id="inputDia-chuauzyn">
+                <option value="0">Domingo</option>
+                <option value="1">Segunda-feira</option>
+                <option value="2">Terça-feira</option>
+                <option value="3">Quarta-feira</option>
+                <option value="4">Quinta-feira</option>
+                <option value="5">Sexta-feira</option>
+                <option value="6">Sábado</option>
+            </select>
+
+            <div class="form-row">
+                <input type="text" id="inputImagem-chuauzyn" placeholder="URL da imagem (Anilist)" style="flex:2;" />
+                <input type="file" id="inputFile-chuauzyn" accept="image/*" onchange="uploadImagem('chuauzyn')" />
+                <img id="previewImg-chuauzyn" class="preview-img" src="https://via.placeholder.com/60x85/222/666?text=Preview" alt="Preview" />
+            </div>
+
+            <input type="hidden" id="editIndex-chuauzyn" value="-1" />
+
+            <button class="btn btn-success" onclick="salvarAnime('chuauzyn')">💾 Salvar</button>
+            <button class="btn btn-secondary" onclick="fecharFormulario('chuauzyn')">Cancelar</button>
+        </div>
+
+        <div id="tab-lista-chuauzyn" class="tab-content active">
+            <div style="display:flex; justify-content:flex-end; margin-bottom:15px;">
+                <button class="btn btn-success" onclick="gerarImagem('lista', 'chuauzyn')">📸 Gerar Imagem da Lista</button>
+            </div>
+            <div id="capture-lista-chuauzyn">
+                <div id="lista-animes-chuauzyn"></div>
+                <div class="footer-credit">
+                    <strong id="total-animes-chuauzyn">0</strong> Animes • By - Chuauzyn
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-cronograma-chuauzyn" class="tab-content">
+            <div style="display:flex; justify-content:flex-end; margin-bottom:15px;">
+                <button class="btn btn-success" onclick="gerarImagem('cronograma', 'chuauzyn')">📸 Gerar Imagem do Cronograma</button>
+            </div>
+            <div id="capture-cronograma-chuauzyn">
+                <div id="cronograma-animes-chuauzyn"></div>
+                <div class="footer-credit">
+                    <strong id="total-cronograma-chuauzyn">0</strong> Animes • By - Chuauzyn
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AIKA -->
+    <div id="main-aika" class="main-content">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="tab-lista-aika" onclick="mudarAba('tab-lista-aika')">📋 Minha Lista</button>
+            <button class="tab-btn" data-tab="tab-cronograma-aika" onclick="mudarAba('tab-cronograma-aika')">📅 Cronograma</button>
+        </div>
+
+        <div class="form" id="form-aika">
+            <input type="text" id="inputNome-aika" placeholder="Nome do anime *" />
+            <input type="date" id="inputData-aika" onchange="atualizarDiaPelaData('aika')" />
+            <select id="inputStreaming-aika">
+                <option value="Crunchyroll">🍊 Crunchyroll</option>
+                <option value="Prime Video">📦 Prime Video</option>
+                <option value="Disney+">🏰 Disney+</option>
+                <option value="Netflix">🎬 Netflix</option>
+                <option value="Outro">🔮 Outro</option>
+                <option value="Desconhecido">❓ Desconhecido</option>
+            </select>
+            <select id="inputDia-aika">
+                <option value="0">Domingo</option>
+                <option value="1">Segunda-feira</option>
+                <option value="2">Terça-feira</option>
+                <option value="3">Quarta-feira</option>
+                <option value="4">Quinta-feira</option>
+                <option value="5">Sexta-feira</option>
+                <option value="6">Sábado</option>
+            </select>
+
+            <div class="form-row">
+                <input type="text" id="inputImagem-aika" placeholder="URL da imagem (Anilist)" style="flex:2;" />
+                <input type="file" id="inputFile-aika" accept="image/*" onchange="uploadImagem('aika')" />
+                <img id="previewImg-aika" class="preview-img" src="https://via.placeholder.com/60x85/222/666?text=Preview" alt="Preview" />
+            </div>
+
+            <input type="hidden" id="editIndex-aika" value="-1" />
+
+            <button class="btn btn-success" onclick="salvarAnime('aika')">💾 Salvar</button>
+            <button class="btn btn-secondary" onclick="fecharFormulario('aika')">Cancelar</button>
+        </div>
+
+        <div id="tab-lista-aika" class="tab-content active">
+            <div style="display:flex; justify-content:flex-end; margin-bottom:15px;">
+                <button class="btn btn-success" onclick="gerarImagem('lista', 'aika')">📸 Gerar Imagem da Lista</button>
+            </div>
+            <div id="capture-lista-aika">
+                <div id="lista-animes-aika"></div>
+                <div class="footer-credit">
+                    <strong id="total-animes-aika">0</strong> Animes • By - Aika
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-cronograma-aika" class="tab-content">
+            <div style="display:flex; justify-content:flex-end; margin-bottom:15px;">
+                <button class="btn btn-success" onclick="gerarImagem('cronograma', 'aika')">📸 Gerar Imagem do Cronograma</button>
+            </div>
+            <div id="capture-cronograma-aika">
+                <div id="cronograma-animes-aika"></div>
+                <div class="footer-credit">
+                    <strong id="total-cronograma-aika">0</strong> Animes • By - Aika
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "firebase/app";
+        import { 
+            getFirestore, 
+            doc, 
+            getDoc, 
+            setDoc,
+            updateDoc,
+            onSnapshot
+        } from "firebase/firestore";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDYDyAC3bSkrusH_QzW8ENuXy4K_E7oUxA",
+            authDomain: "lista-temporada-de-animes.firebaseapp.com",
+            projectId: "lista-temporada-de-animes",
+            storageBucket: "lista-temporada-de-animes.firebasestorage.app",
+            messagingSenderId: "1049980757334",
+            appId: "1:1049980757334:web:eeae24202eac42065ca2f7"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.db = db;
+        window.doc = doc;
+        window.getDoc = getDoc;
+        window.setDoc = setDoc;
+        window.updateDoc = updateDoc;
+        window.onSnapshot = onSnapshot;
+
+        console.log('🔥 Firebase inicializado!');
+    </script>
+
+    <script>
+        const STREAMING_CONFIG = {
+            'Crunchyroll': {
+                logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Crunchyroll.svg/1280px-Crunchyroll.svg.png',
+                classe: 'streaming-crunchyroll'
+            },
+            'Prime Video': {
+                logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Amazon_Prime_Video_logo.svg/3840px-Amazon_Prime_Video_logo.svg.png',
+                classe: 'streaming-primevideo'
+            },
+            'Disney+': {
+                logo: 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Disney%2B_logo.svg',
+                classe: 'streaming-disney'
+            },
+            'Netflix': {
+                logo: 'https://upload.wikimedia.org/wikipedia/commons/7/7a/Logonetflix.png',
+                classe: 'streaming-netflix'
+            },
+            'Outro': {
+                logo: 'https://via.placeholder.com/16/6c5ce7/fff?text=+',
+                classe: 'streaming-outro'
+            },
+            'Desconhecido': {
+                logo: 'https://via.placeholder.com/16/2d3436/888?text=?',
+                classe: 'streaming-desconhecido'
+            }
+        };
+
+        const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira',
+            'Quinta-feira', 'Sexta-feira', 'Sábado'
+        ];
+
+        const usuarios = ['chuauzyn', 'aika'];
+        let dados = { chuauzyn: [], aika: [] };
+        let usuarioAtual = 'chuauzyn';
+        let isSyncing = false;
+        let isOnline = navigator.onLine;
+        let isUpdatingFromFirebase = false;
+        let lastSyncTime = localStorage.getItem('lastSyncTime') || 'nunca';
+
+        // ============================================================
+        // TOAST
+        // ============================================================
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // ============================================================
+        // STATUS
+        // ============================================================
+        function updateSyncStatus(status, message) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            const lastSync = document.getElementById('lastSyncText');
+
+            dot.className = `status-dot ${status}`;
+            
+            if (status === 'online') {
+                text.textContent = '☁️ Conectado';
+                text.style.color = '#00b894';
+            } else if (status === 'offline') {
+                text.textContent = '📡 Offline';
+                text.style.color = '#e17055';
+            } else if (status === 'syncing') {
+                text.textContent = '🔄 Sincronizando...';
+                text.style.color = '#fdcb6e';
+            }
+
+            if (message) {
+                lastSync.textContent = message;
+            } else if (status === 'online') {
+                lastSync.textContent = `Última sincronização: ${lastSyncTime}`;
+            }
+        }
+
+        // ============================================================
+        // CARREGAR DADOS
+        // ============================================================
+        function carregarDados() {
+            usuarios.forEach(user => {
+                const raw = localStorage.getItem(`animes_temporada_${user}`);
+                if (raw) {
+                    try { 
+                        dados[user] = JSON.parse(raw); 
+                    } catch (e) { 
+                        dados[user] = []; 
+                    }
+                } else {
+                    if (user === 'chuauzyn') {
+                        dados[user] = [
+                            { nome: 'LEVEL 999 NO MURABITOU', data: '2026-07-02', imagem: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx123456.jpg', streaming: 'Crunchyroll', dia: 4 },
+                            { nome: 'TOMB RAIDER KING', data: '2026-07-09', imagem: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx654321.jpg', streaming: 'Crunchyroll', dia: 4 },
+                            { nome: 'ISEKAI SHITTARA SLIME', data: 'continua', imagem: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx789012.jpg', streaming: 'Crunchyroll', dia: 5 },
+                            { nome: 'BLACK TORCH', data: '2026-07-04', imagem: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx345678.jpg', streaming: 'Crunchyroll', dia: 6 },
+                            { nome: "LET'S GO KAIKIGUMI", data: '2026-07-06', imagem: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx901234.jpg', streaming: 'Desconhecido', dia: 0 },
+                            { nome: 'SKELETON KNIGHT II', data: '2026-07-06', imagem: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx567890.jpg', streaming: 'Crunchyroll', dia: 1 },
+                            { nome: 'MUSHOKU TENSEI', data: '2026-07-06', imagem: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx123789.jpg', streaming: 'Crunchyroll', dia: 1 },
+                            { nome: 'SAIKYOU DEGARASHI OUJI', data: '2026-07-06', imagem: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx456123.jpg', streaming: 'Crunchyroll', dia: 1 },
+                            { nome: 'OTOME GAME SEKAI WA MOB II', data: '2026-07-08', imagem: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx789456.jpg', streaming: 'Crunchyroll', dia: 2 },
+                            { nome: 'CLEVATESS II', data: '2026-07-08', imagem: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx321654.jpg', streaming: 'Crunchyroll', dia: 2 },
+                            { nome: 'RE:ZERO IV', data: 'continua', imagem: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx987654.jpg', streaming: 'Crunchyroll', dia: 2 }
+                        ];
+                    } else {
+                        dados[user] = [];
+                    }
+                }
+            });
+            renderizarTudo();
+            updateSyncStatus(isOnline ? 'online' : 'offline');
+        }
+
+        function salvarDados(user) {
+            localStorage.setItem(`animes_temporada_${user}`, JSON.stringify(dados[user]));
+        }
+
+        function renderizarTudo() {
+            renderizarLista('chuauzyn');
+            renderizarCronograma('chuauzyn');
+            renderizarLista('aika');
+            renderizarCronograma('aika');
+        }
+
+        // ============================================================
+        // SINCRONIZAR COM FIREBASE
+        // ============================================================
+        async function sincronizarFirebase() {
+            if (isSyncing) return;
+            
+            const syncBtn = document.getElementById('syncBtn');
+            isSyncing = true;
+            syncBtn.classList.add('syncing');
+            updateSyncStatus('syncing', 'Sincronizando...');
+
+            try {
+                const { db, doc, getDoc, setDoc } = window;
+                
+                if (!db) {
+                    throw new Error('Firebase não inicializado');
+                }
+
+                for (const user of usuarios) {
+                    const docRef = doc(db, 'animes', user);
+                    const docSnap = await getDoc(docRef);
+                    
+                    if (docSnap.exists()) {
+                        const firebaseData = docSnap.data();
+                        if (firebaseData.animes && Array.isArray(firebaseData.animes)) {
+                            // Atualiza dados locais com os do Firebase (prioridade do Firebase)
+                            dados[user] = firebaseData.animes;
+                            salvarDados(user);
+                            console.log(`📥 Dados de ${user} carregados do Firebase: ${dados[user].length} animes`);
+                        }
+                    } else {
+                        // Se não existir, cria com os dados locais
+                        await setDoc(docRef, {
+                            usuario: user,
+                            animes: dados[user],
+                            ultimaAtualizacao: new Date().toISOString()
+                        });
+                        console.log(`📤 Dados de ${user} enviados para o Firebase`);
+                    }
+                }
+
+                const now = new Date().toLocaleString('pt-BR');
+                lastSyncTime = now;
+                localStorage.setItem('lastSyncTime', now);
+                updateSyncStatus('online', `Última sincronização: ${now}`);
+                showToast('✅ Sincronizado com sucesso!', 'success');
+                
+                renderizarTudo();
+
+            } catch (error) {
+                console.error('❌ Erro na sincronização:', error);
+                showToast('❌ Erro ao sincronizar: ' + error.message, 'error');
+                updateSyncStatus(isOnline ? 'online' : 'offline');
+            }
+
+            isSyncing = false;
+            syncBtn.classList.remove('syncing');
+        }
+
+        // ============================================================
+        // ENVIAR PARA FIREBASE (quando mudar algo)
+        // ============================================================
+        async function enviarParaFirebase(user) {
+            if (isUpdatingFromFirebase) return;
+            
+            try {
+                const { db, doc, setDoc } = window;
+                if (!db) return;
+
+                const docRef = doc(db, 'animes', user);
+                await setDoc(docRef, {
+                    usuario: user,
+                    animes: dados[user],
+                    ultimaAtualizacao: new Date().toISOString()
+                }, { merge: true });
+                
+                console.log(`📤 ${user} enviado para Firebase`);
+            } catch (error) {
+                console.warn('⚠️ Erro ao enviar para Firebase:', error);
+            }
+        }
+
+        // ============================================================
+        // LISTENER DO FIREBASE
+        // ============================================================
+        function setupFirebaseListener() {
+            try {
+                const { db, doc, onSnapshot } = window;
+                if (!db) return;
+
+                usuarios.forEach(user => {
+                    const docRef = doc(db, 'animes', user);
+                    onSnapshot(docRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            const firebaseData = docSnap.data();
+                            if (firebaseData.animes && Array.isArray(firebaseData.animes)) {
+                                const localData = JSON.stringify(dados[user]);
+                                const remoteData = JSON.stringify(firebaseData.animes);
+                                
+                                if (localData !== remoteData && !isUpdatingFromFirebase) {
+                                    isUpdatingFromFirebase = true;
+                                    dados[user] = firebaseData.animes;
+                                    salvarDados(user);
+                                    renderizarLista(user);
+                                    renderizarCronograma(user);
+                                    
+                                    const now = new Date().toLocaleString('pt-BR');
+                                    lastSyncTime = now;
+                                    localStorage.setItem('lastSyncTime', now);
+                                    updateSyncStatus('online', `Última sincronização: ${now}`);
+                                    
+                                    if (!document.hidden) {
+                                        showToast(`🔄 ${user} atualizado da nuvem!`, 'info');
+                                    }
+                                    setTimeout(() => { isUpdatingFromFirebase = false; }, 500);
+                                }
+                            }
+                        }
+                    }, (error) => {
+                        console.warn('⚠️ Erro no listener:', error);
+                        updateSyncStatus('offline');
+                    });
+                });
+
+                console.log('👢 Listeners configurados');
+            } catch (error) {
+                console.warn('⚠️ Erro ao configurar listeners:', error);
+            }
+        }
+
+        // ============================================================
+        // EXPORTAR/IMPORTAR
+        // ============================================================
+        function exportarDados() {
+            const data = {
+                versao: '1.0',
+                dataExportacao: new Date().toISOString(),
+                usuarios: dados
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = `animes_temporada_${new Date().toISOString().slice(0, 10)}.json`;
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+            showToast('✅ Dados exportados!', 'success');
+        }
+
+        function importarDados(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!data.usuarios || !data.usuarios.chuauzyn || !data.usuarios.aika) {
+                        showToast('❌ Arquivo inválido!', 'error');
+                        return;
+                    }
+
+                    if (!confirm('⚠️ Isso vai SOBRESCREVER todos os dados. Continuar?')) return;
+
+                    dados.chuauzyn = data.usuarios.chuauzyn;
+                    dados.aika = data.usuarios.aika;
+
+                    salvarDados('chuauzyn');
+                    salvarDados('aika');
+                    renderizarTudo();
+                    
+                    // Envia para Firebase
+                    enviarParaFirebase('chuauzyn');
+                    enviarParaFirebase('aika');
+                    
+                    showToast('✅ Dados importados!', 'success');
+                } catch (error) {
+                    showToast('❌ Erro: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // ============================================================
+        // NAVEGAÇÃO
+        // ============================================================
+        function mudarUsuario(user) {
+            usuarioAtual = user;
+            document.querySelectorAll('.main-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.main-tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(`main-${user}`).classList.add('active');
+            document.querySelector(`.main-tab-btn[data-user="${user}"]`).classList.add('active');
+            fecharFormulario(user);
+        }
+
+        function mudarAba(abaId) {
+            const parent = document.getElementById(abaId).closest('.main-content');
+            const parentId = parent.id.replace('main-', '');
+
+            parent.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            parent.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(abaId).classList.add('active');
+            parent.querySelector(`.tab-btn[data-tab="${abaId}"]`).classList.add('active');
+
+            if (abaId.includes('cronograma')) {
+                renderizarCronograma(parentId);
+            }
+        }
+
+        // ============================================================
+        // RENDERIZAR LISTA
+        // ============================================================
+        function renderizarLista(user) {
+            const container = document.getElementById(`lista-animes-${user}`);
+            if (!container) return;
+            container.innerHTML = '';
+
+            const animes = dados[user] || [];
+            const sorted = [...animes].sort((a, b) => {
+                if (a.dia !== b.dia) return a.dia - b.dia;
+                if (a.data === 'continua' && b.data !== 'continua') return 1;
+                if (b.data === 'continua' && a.data !== 'continua') return -1;
+                return a.nome.localeCompare(b.nome);
+            });
+
+            const grupos = {};
+            sorted.forEach(anime => {
+                const diaNome = DIAS_SEMANA[anime.dia] || 'Outro';
+                if (!grupos[diaNome]) grupos[diaNome] = [];
+                grupos[diaNome].push(anime);
+            });
+
+            let total = 0;
+
+            DIAS_SEMANA.forEach(diaNome => {
+                const lista = grupos[diaNome] || [];
+                if (lista.length === 0) return;
+                total += lista.length;
+
+                const section = document.createElement('div');
+                section.className = 'day-section';
+
+                const title = document.createElement('div');
+                title.className = 'day-title';
+                title.innerHTML = `${diaNome} <span class="count">${lista.length}</span>`;
+                section.appendChild(title);
+
+                const grid = document.createElement('div');
+                grid.className = 'anime-grid';
+
+                lista.forEach(anime => {
+                    const card = document.createElement('div');
+                    card.className = 'anime-card';
+
+                    const img = document.createElement('img');
+                    img.className = 'anime-cover';
+                    img.src = anime.imagem || 'https://via.placeholder.com/70x100/222/666?text=Sem+Imagem';
+                    img.alt = anime.nome;
+                    img.loading = 'lazy';
+                    img.onerror = function() {
+                        this.src = 'https://via.placeholder.com/70x100/222/666?text=Erro';
+                    };
+
+                    const info = document.createElement('div');
+                    info.className = 'anime-info';
+
+                    const nomeEl = document.createElement('div');
+                    nomeEl.className = 'name';
+                    nomeEl.textContent = anime.nome;
+
+                    const details = document.createElement('div');
+                    details.className = 'details';
+
+                    const dataEl = document.createElement('span');
+                    dataEl.textContent = anime.data === 'continua' ? 'Continua' : formatarData(anime.data);
+
+                    const streamingInfo = STREAMING_CONFIG[anime.streaming] || STREAMING_CONFIG['Desconhecido'];
+                    const streamingEl = document.createElement('span');
+                    streamingEl.className = `streaming-badge ${streamingInfo.classe}`;
+                    streamingEl.innerHTML = `
+                                <img src="${streamingInfo.logo}" alt="${anime.streaming}" class="streaming-logo" 
+                                     onerror="this.style.display='none'" />
+                                ${anime.streaming}
+                            `;
+
+                    details.appendChild(dataEl);
+                    details.appendChild(streamingEl);
+                    info.appendChild(nomeEl);
+                    info.appendChild(details);
+
+                    const actions = document.createElement('div');
+                    actions.className = 'card-actions';
+
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'edit-btn';
+                    editBtn.textContent = '✎';
+                    editBtn.title = 'Editar';
+                    const index = animes.indexOf(anime);
+                    editBtn.onclick = function(e) {
+                        e.stopPropagation();
+                        editarAnime(user, index);
+                    };
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'remove-btn';
+                    removeBtn.textContent = '✕';
+                    removeBtn.title = 'Remover';
+                    removeBtn.onclick = function(e) {
+                        e.stopPropagation();
+                        removerAnime(user, index);
+                    };
+
+                    actions.appendChild(editBtn);
+                    actions.appendChild(removeBtn);
+
+                    card.appendChild(img);
+                    card.appendChild(info);
+                    card.appendChild(actions);
+                    grid.appendChild(card);
+                });
+
+                section.appendChild(grid);
+                container.appendChild(section);
+            });
+
+            const totalEl = document.getElementById(`total-animes-${user}`);
+            if (totalEl) totalEl.textContent = total;
+            salvarDados(user);
+        }
+
+        // ============================================================
+        // RENDERIZAR CRONOGRAMA
+        // ============================================================
+        function renderizarCronograma(user) {
+            const container = document.getElementById(`cronograma-animes-${user}`);
+            if (!container) return;
+            container.innerHTML = '';
+
+            const animes = dados[user] || [];
+            const sorted = [...animes].sort((a, b) => a.dia - b.dia);
+
+            const grupos = {};
+            sorted.forEach(anime => {
+                const diaNome = DIAS_SEMANA[anime.dia] || 'Outro';
+                if (!grupos[diaNome]) grupos[diaNome] = [];
+                grupos[diaNome].push(anime);
+            });
+
+            let total = 0;
+
+            DIAS_SEMANA.forEach(diaNome => {
+                const lista = grupos[diaNome] || [];
+                if (lista.length === 0) return;
+                total += lista.length;
+
+                const section = document.createElement('div');
+                section.className = 'day-section cronograma-destaque';
+
+                const title = document.createElement('div');
+                title.className = 'day-title';
+                title.innerHTML = `${diaNome} <span class="count">${lista.length}</span>`;
+                section.appendChild(title);
+
+                const grid = document.createElement('div');
+                grid.className = 'anime-grid';
+
+                lista.forEach(anime => {
+                    const card = document.createElement('div');
+                    card.className = 'cronograma-card';
+
+                    const banner = document.createElement('img');
+                    banner.className = 'cron-banner';
+                    if (anime.imagem && !anime.imagem.includes('placeholder')) {
+                        banner.src = anime.imagem;
+                        banner.loading = 'lazy';
+                        banner.onerror = function() {
+                            this.style.display = 'none';
+                        };
+                    } else {
+                        const cores = ['#6c5ce7', '#e17055', '#00b894', '#fdcb6e', '#0984e3', '#fd79a8'];
+                        const cor = cores[anime.nome.length % cores.length];
+                        banner.style.background = `linear-gradient(135deg, ${cor}, ${cor}dd)`;
+                        banner.style.opacity = '0.5';
+                    }
+
+                    const overlay = document.createElement('div');
+                    overlay.className = 'cron-overlay';
+
+                    const content = document.createElement('div');
+                    content.className = 'cron-content';
+
+                    const nomeEl = document.createElement('span');
+                    nomeEl.className = 'cron-nome';
+                    nomeEl.textContent = anime.nome;
+
+                    const streamingDiv = document.createElement('div');
+                    streamingDiv.className = 'cron-streaming';
+
+                    const streamingInfo = STREAMING_CONFIG[anime.streaming] || STREAMING_CONFIG['Desconhecido'];
+                    const imgLogo = document.createElement('img');
+                    imgLogo.src = streamingInfo.logo;
+                    imgLogo.alt = anime.streaming;
+                    imgLogo.onerror = function() { this.style.display = 'none'; };
+
+                    const nomeStreaming = document.createElement('span');
+                    nomeStreaming.textContent = anime.streaming;
+
+                    streamingDiv.appendChild(imgLogo);
+                    streamingDiv.appendChild(nomeStreaming);
+
+                    content.appendChild(nomeEl);
+                    content.appendChild(streamingDiv);
+
+                    card.appendChild(banner);
+                    card.appendChild(overlay);
+                    card.appendChild(content);
+                    grid.appendChild(card);
+                });
+
+                section.appendChild(grid);
+                container.appendChild(section);
+            });
+
+            const totalEl = document.getElementById(`total-cronograma-${user}`);
+            if (totalEl) totalEl.textContent = total;
+        }
+
+        // ============================================================
+        // FUNÇÕES AUXILIARES
+        // ============================================================
+        function formatarData(dataStr) {
+            if (!dataStr || dataStr === 'continua') return 'Continua';
+            try {
+                const d = new Date(dataStr + 'T00:00:00');
+                return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }).replace('.', '');
+            } catch (e) { return dataStr; }
+        }
+
+        function atualizarDiaPelaData(user) {
+            const dataInput = document.getElementById(`inputData-${user}`);
+            const diaSelect = document.getElementById(`inputDia-${user}`);
+            if (dataInput && dataInput.value) {
+                const data = new Date(dataInput.value + 'T00:00:00');
+                if (!isNaN(data.getTime())) {
+                    diaSelect.value = data.getDay();
+                }
+            }
+        }
+
+        function uploadImagem(user) {
+            const fileInput = document.getElementById(`inputFile-${user}`);
+            const imgInput = document.getElementById(`inputImagem-${user}`);
+            const preview = document.getElementById(`previewImg-${user}`);
+            const file = fileInput.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64 = e.target.result;
+                imgInput.value = base64;
+                preview.src = base64;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function atualizarPreview(user, url) {
+            const preview = document.getElementById(`previewImg-${user}`);
+            if (preview) {
+                if (url && url.trim() !== '') {
+                    preview.src = url.trim();
+                    preview.onerror = function() {
+                        this.src = 'https://via.placeholder.com/60x85/222/666?text=Erro';
+                    };
+                } else {
+                    preview.src = 'https://via.placeholder.com/60x85/222/666?text=Preview';
+                }
+            }
+        }
+
+        // ============================================================
+        // CRUD
+        // ============================================================
+        function abrirFormulario(user) {
+            user = user || usuarioAtual;
+            const form = document.getElementById(`form-${user}`);
+            if (!form) return;
+            document.getElementById(`editIndex-${user}`).value = -1;
+            document.getElementById(`inputNome-${user}`).value = '';
+            document.getElementById(`inputData-${user}`).value = '';
+            document.getElementById(`inputStreaming-${user}`).value = 'Crunchyroll';
+            document.getElementById(`inputDia-${user}`).value = 0;
+            document.getElementById(`inputImagem-${user}`).value = '';
+            atualizarPreview(user, '');
+            form.classList.add('open');
+            document.getElementById(`inputNome-${user}`).focus();
+        }
+
+        function abrirFormularioComDados(user, anime, index) {
+            const form = document.getElementById(`form-${user}`);
+            if (!form) return;
+            document.getElementById(`editIndex-${user}`).value = index;
+            document.getElementById(`inputNome-${user}`).value = anime.nome || '';
+            document.getElementById(`inputData-${user}`).value = anime.data !== 'continua' ? anime.data : '';
+            document.getElementById(`inputStreaming-${user}`).value = anime.streaming || 'Desconhecido';
+            document.getElementById(`inputDia-${user}`).value = anime.dia || 0;
+            document.getElementById(`inputImagem-${user}`).value = anime.imagem || '';
+            atualizarPreview(user, anime.imagem);
+            form.classList.add('open');
+            document.getElementById(`inputNome-${user}`).focus();
+        }
+
+        function fecharFormulario(user) {
+            user = user || usuarioAtual;
+            const form = document.getElementById(`form-${user}`);
+            if (form) form.classList.remove('open');
+            const fileInput = document.getElementById(`inputFile-${user}`);
+            if (fileInput) fileInput.value = '';
+        }
+
+        async function salvarAnime(user) {
+            user = user || usuarioAtual;
+            const nome = document.getElementById(`inputNome-${user}`).value.trim();
+            const data = document.getElementById(`inputData-${user}`).value || 'continua';
+            const streaming = document.getElementById(`inputStreaming-${user}`).value;
+            const dia = parseInt(document.getElementById(`inputDia-${user}`).value);
+            let imagem = document.getElementById(`inputImagem-${user}`).value.trim();
+            if (!imagem) imagem = 'https://via.placeholder.com/70x100/222/666?text=Sem+Imagem';
+            const editIndex = parseInt(document.getElementById(`editIndex-${user}`).value);
+
+            if (!nome) {
+                showToast('⚠️ Digite o nome do anime!', 'error');
+                return;
+            }
+
+            const anime = { nome, data, streaming, dia, imagem };
+
+            if (editIndex >= 0 && editIndex < dados[user].length) {
+                dados[user][editIndex] = anime;
+                showToast('✏️ Anime atualizado!', 'success');
+            } else {
+                dados[user].push(anime);
+                showToast('➕ Anime adicionado!', 'success');
+            }
+
+            salvarDados(user);
+            renderizarLista(user);
+            renderizarCronograma(user);
+            fecharFormulario(user);
+            
+            // Envia para Firebase
+            await enviarParaFirebase(user);
+        }
+
+        function editarAnime(user, index) {
+            if (index < 0 || index >= dados[user].length) return;
+            fecharFormulario(user);
+            abrirFormularioComDados(user, dados[user][index], index);
+        }
+
+        async function removerAnime(user, index) {
+            if (index < 0 || index >= dados[user].length) return;
+            if (confirm(`Remover "${dados[user][index].nome}" da lista?`)) {
+                dados[user].splice(index, 1);
+                salvarDados(user);
+                renderizarLista(user);
+                renderizarCronograma(user);
+                showToast('🗑️ Anime removido!', 'info');
+                
+                await enviarParaFirebase(user);
+            }
+        }
+
+        function novaTemporada() {
+            if (confirm(`⚠️ Isso vai APAGAR todos os animes de ${usuarioAtual}. Confirmar?`)) {
+                dados[usuarioAtual] = [];
+                salvarDados(usuarioAtual);
+                renderizarLista(usuarioAtual);
+                renderizarCronograma(usuarioAtual);
+                showToast('🔄 Nova temporada iniciada!', 'info');
+                enviarParaFirebase(usuarioAtual);
+            }
+        }
+
+        // ============================================================
+        // GERAR IMAGEM
+        // ============================================================
+        function gerarImagem(tipo, user) {
+            user = user || usuarioAtual;
+            let areaId = tipo === 'cronograma' ? `capture-cronograma-${user}` : `capture-lista-${user}`;
+            let nomeArquivo = `${user}_${tipo}_${new Date().toISOString().slice(0, 10)}`;
+
+            const area = document.getElementById(areaId);
+            if (!area) return;
+
+            showToast('📸 Gerando imagem...', 'info');
+
+            html2canvas(area, {
+                backgroundColor: '#0d0d0d',
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                logging: false
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `${nomeArquivo}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                showToast('✅ Imagem gerada!', 'success');
+            }).catch(err => {
+                showToast('❌ Erro: ' + err.message, 'error');
+            });
+        }
+
+        // ============================================================
+        // MONITORAR CONEXÃO
+        // ============================================================
+        window.addEventListener('online', () => {
+            isOnline = true;
+            updateSyncStatus('online');
+            showToast('🌐 Conectado!', 'success');
+            setTimeout(() => sincronizarFirebase(), 1000);
+        });
+
+        window.addEventListener('offline', () => {
+            isOnline = false;
+            updateSyncStatus('offline');
+            showToast('📡 Offline', 'info');
+        });
+
+        // ============================================================
+        // INICIALIZA
+        // ============================================================
+        carregarDados();
+
+        setTimeout(() => {
+            setupFirebaseListener();
+            setTimeout(() => sincronizarFirebase(), 1500);
+        }, 500);
+
+        // Event listeners
+        usuarios.forEach(user => {
+            const input = document.getElementById(`inputNome-${user}`);
+            if (input) {
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') salvarAnime(user);
+                });
+            }
+
+            const imgInput = document.getElementById(`inputImagem-${user}`);
+            if (imgInput) {
+                imgInput.addEventListener('input', function() {
+                    atualizarPreview(user, this.value);
+                });
+            }
+        });
+
+        // Fechar formulário
+        document.addEventListener('click', function(e) {
+            usuarios.forEach(user => {
+                const form = document.getElementById(`form-${user}`);
+                if (form && form.classList.contains('open')) {
+                    const isForm = form.contains(e.target);
+                    const isAddBtn = e.target.closest('.btn-primary');
+                    if (!isForm && !isAddBtn) {
+                        fecharFormulario(user);
+                    }
+                }
+            });
+        });
+
+        // ============================================================
+        // EXPORTA FUNÇÕES
+        // ============================================================
+        window.mudarUsuario = mudarUsuario;
+        window.mudarAba = mudarAba;
+        window.abrirFormulario = abrirFormulario;
+        window.fecharFormulario = fecharFormulario;
+        window.salvarAnime = salvarAnime;
+        window.editarAnime = editarAnime;
+        window.removerAnime = removerAnime;
+        window.novaTemporada = novaTemporada;
+        window.exportarDados = exportarDados;
+        window.importarDados = importarDados;
+        window.gerarImagem = gerarImagem;
+        window.uploadImagem = uploadImagem;
+        window.atualizarDiaPelaData = atualizarDiaPelaData;
+        window.sincronizarFirebase = sincronizarFirebase;
+    </script>
+
+</body>
+</html>
